@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Internal planning docs
+DOGFOOD.md
+PLAN.md
