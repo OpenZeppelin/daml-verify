@@ -22,7 +22,7 @@ daml-verify ships with 9 properties across three categories:
 
 ```bash
 # Clone and set up
-git clone https://github.com/4meta5/daml-verify.git && cd daml-verify
+git clone https://github.com/OpenZeppelin/daml-verify.git && cd daml-verify
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
