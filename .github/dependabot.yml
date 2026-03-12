@@ -1,0 +1,16 @@
+---
+version: 2
+# opt in to updates for ecosystems that are not yet GA.
+enable-beta-ecosystems: true
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: 'chore(deps): '
+    labels:
+      - dependabot
+      - dependencies
+    open-pull-requests-limit: 5
