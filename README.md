@@ -1,5 +1,10 @@
 # daml-verify
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
+> [!WARNING]
+> This software is experimental and not intended for production use. Use at your own risk.
+
 Lightweight formal verification for DAML contracts using the [Z3 SMT solver](https://github.com/Z3Prover/z3). Proves that critical invariants hold **for all possible inputs** — not just the ones you thought to test.
 
 ## Properties
@@ -119,6 +124,3 @@ def prop_my_invariant():
 - Python 3.10+
 - z3-solver >= 4.12
 
-## License
-
-Apache 2.0 — see [LICENSE](LICENSE).
