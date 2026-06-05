@@ -20,6 +20,8 @@ def main():
         properties = [(n, f) for n, f in ALL_PROPERTIES if n.startswith("T")]
     elif args == ["--class", "vault"] or args == ["-c", "vault"]:
         properties = [(n, f) for n, f in ALL_PROPERTIES if n.startswith("V")]
+    elif args == ["--class", "admin"] or args == ["-c", "admin"]:
+        properties = [(n, f) for n, f in ALL_PROPERTIES if n.startswith("A")]
     elif len(args) == 1:
         query = args[0]
         properties = [(n, f) for n, f in ALL_PROPERTIES if n.startswith(query)]
@@ -30,7 +32,7 @@ def main():
                 print(f"  {name}")
             sys.exit(1)
     else:
-        print("Usage: python main.py [--class conservation|division|temporal] [property-id]")
+        print("Usage: python main.py [--class conservation|division|temporal|vault|admin] [property-id]")
         sys.exit(1)
 
     results = []

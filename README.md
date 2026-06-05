@@ -9,7 +9,8 @@ Lightweight formal verification for DAML contracts using the [Z3 SMT solver](htt
 
 ## Properties
 
-daml-verify ships with 9 properties across three categories:
+daml-verify ships with 22 properties across five categories — conservation (C),
+division (D), temporal (T), vault (V), and admin layer (A):
 
 | ID | Property | What it proves |
 |----|----------|----------------|
@@ -22,6 +23,24 @@ daml-verify ships with 9 properties across three categories:
 | T1 | Transfer temporal | `requestedAt < executeBefore` follows from preconditions |
 | T2 | Allocation temporal | Full temporal chain is consistent |
 | T3 | Lock expiry | Lock is always active at creation time |
+| V1 | Fee monotonicity | Stablecoin fee grows monotonically with input |
+| V2 | Collateral ratio guard | Under-collateralized positions are rejected |
+| V3 | Liquidation conservation | Liquidation conserves value |
+| V4 | Division safety (ratio) | Collateral-ratio division is guarded |
+| V5 | Division safety (seize) | Seize-amount division is guarded |
+| A1 | Capability admin gate | A capability from a different registry admin never authorizes |
+| A2 | Capability assignee gate | A capability never authorizes a caller it does not name (anti-impersonation) |
+| A3 | Capability role gate | A capability for the wrong role never authorizes |
+| A4 | Scope least privilege | An instrument-scoped capability cannot authorize a registry-wide op |
+| A5 | Scope completeness | Registry-wide authorizes any op; an instrument cap authorizes its instrument |
+| A6 | Mint allowance decrement | A capped mint decrements exactly and stays non-negative |
+| A7 | Mint allowance conservation | Sequential capped mints never exceed the initial allowance |
+| A8 | Pause blocks origination | While paused, a gated origination choice cannot proceed |
+
+The admin-layer (A) properties model `SimpleToken/Admin/Capability.daml`
+(`requireRole`, `scopeAuthorizes`, `consumeMintAllowance`) and `Rules.daml`
+(`assertNotPaused`) from the OpenZeppelin canton-token-template — its
+AccessControl / Pausable / per-minter-cap layer.
 
 ## Quick start
 
@@ -32,25 +51,30 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run all 9 proofs
+# Run all proofs
 python main.py
 ```
 
 Expected output:
 
 ```
-daml-verify: 9 properties, 9 proved, 0 disproved
+daml-verify: 22 properties, 22 proved, 0 disproved
 
   [PROVED] C1: conservation total
-  [PROVED] C2: receiver amount
-  [PROVED] C3: sender change
-  [PROVED] D1: scaleFees safety
-  [PROVED] D2: issuance safety
-  [PROVED] D3: ensure sufficient
-  [PROVED] T1: transfer temporal
-  [PROVED] T2: allocation temporal
-  [PROVED] T3: lock expiry
+  ...
+  [PROVED] V5: division safety (seize)
+  [PROVED] A1: capability admin gate
+  [PROVED] A2: capability assignee gate
+  [PROVED] A3: capability role gate
+  [PROVED] A4: scope least privilege
+  [PROVED] A5: scope completeness
+  [PROVED] A6: mint allowance decrement
+  [PROVED] A7: mint allowance conservation
+  [PROVED] A8: pause blocks origination
 ```
+
+Run a single category with `python main.py --class admin` (or `conservation`,
+`division`, `temporal`, `vault`).
 
 ## Usage
 

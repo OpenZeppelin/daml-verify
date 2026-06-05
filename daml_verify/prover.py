@@ -28,6 +28,16 @@ from daml_verify.props.vault import (
     prop_division_safety_ratio,
     prop_division_safety_seize,
 )
+from daml_verify.props.admin import (
+    prop_capability_admin_gate,
+    prop_capability_assignee_gate,
+    prop_capability_role_gate,
+    prop_scope_least_privilege,
+    prop_scope_completeness,
+    prop_mint_allowance_decrement,
+    prop_mint_allowance_conservation,
+    prop_pause_blocks_origination,
+)
 
 
 class ProofStatus(Enum):
@@ -63,7 +73,8 @@ def run_proof(name, preconditions, goal):
         return ProofResult(name, ProofStatus.UNKNOWN, str(result))
 
 
-# All 9 properties with their names and constructor functions.
+# All properties with their names and constructor functions.
+# Prefixes: C conservation · D division · T temporal · V vault · A admin layer.
 ALL_PROPERTIES = [
     ("C1: conservation total", prop_conservation_total),
     ("C2: receiver amount", prop_conservation_receiver),
@@ -79,11 +90,19 @@ ALL_PROPERTIES = [
     ("V3: liquidation conservation", prop_liquidation_conservation),
     ("V4: division safety (ratio)", prop_division_safety_ratio),
     ("V5: division safety (seize)", prop_division_safety_seize),
+    ("A1: capability admin gate", prop_capability_admin_gate),
+    ("A2: capability assignee gate", prop_capability_assignee_gate),
+    ("A3: capability role gate", prop_capability_role_gate),
+    ("A4: scope least privilege", prop_scope_least_privilege),
+    ("A5: scope completeness", prop_scope_completeness),
+    ("A6: mint allowance decrement", prop_mint_allowance_decrement),
+    ("A7: mint allowance conservation", prop_mint_allowance_conservation),
+    ("A8: pause blocks origination", prop_pause_blocks_origination),
 ]
 
 
 def run_all_properties():
-    """Run all 14 properties and collect results."""
+    """Run all properties and collect results."""
     results = []
     for name, prop_fn in ALL_PROPERTIES:
         preconditions, goal = prop_fn()
