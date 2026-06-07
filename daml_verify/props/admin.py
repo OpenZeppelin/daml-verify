@@ -214,34 +214,28 @@ def prop_freeze_blocks_origination():
     return BoolVal(True), goal
 
 
-def prop_freeze_gate_completeness():
-    """A15 (INV-40): the gate is not over-restrictive — an origination whose
-    registry is not paused and whose involved parties are all unfrozen proceeds."""
+def prop_freeze_gate_characterization():
+    """A15 (INV-25 ∧ INV-40): the unified gate is EXACTLY pause ∧ freeze. Proves the
+    biconditional `assertCanOriginate ⟺ (not paused ∧ no involved party frozen)`
+    against an independently-written reference — so it is NOT the vacuous `P → P`
+    that a one-directional `Implies(condition, proceeds)` would be (that holds even
+    if the gate dropped a conjunct). This characterization is the load-bearing freeze
+    proof: it fails if `symbolic_can_originate` drops the freeze conjunct, drops the
+    pause conjunct, or degenerates to always-false, so it also subsumes the
+    pause-preservation claim (no separate `pause dominates` proof is needed — that
+    would merely restate A8). A14 keeps the headline negative direction explicit."""
     is_frozen = frozen_relation()
     sender, receiver = Ints("sender receiver")
     paused, = Bools("paused")
     proceeds = symbolic_can_originate(paused, [sender, receiver], is_frozen)
-    goal = Implies(
-        And(Not(paused), Not(is_frozen(sender)), Not(is_frozen(receiver))),
-        proceeds,
-    )
-    return BoolVal(True), goal
-
-
-def prop_pause_dominates_freeze():
-    """A16 (INV-25 ∧ INV-40): pause and freeze are unified — a paused registry blocks
-    origination regardless of freeze state, so folding both into one gate cannot let
-    a pause be silently dropped."""
-    is_frozen = frozen_relation()
-    sender, receiver = Ints("sender receiver")
-    paused, = Bools("paused")
-    proceeds = symbolic_can_originate(paused, [sender, receiver], is_frozen)
-    goal = Implies(paused, Not(proceeds))
+    # Reference spec, written independently of `symbolic_can_originate`'s composition:
+    expected = And(Not(paused), Not(is_frozen(sender)), Not(is_frozen(receiver)))
+    goal = proceeds == expected
     return BoolVal(True), goal
 
 
 def prop_admin_never_freezable():
-    """A17 (INV-42): the registry administrator can never be frozen — any attempt to
+    """A16 (INV-42): the registry administrator can never be frozen — any attempt to
     set the admin party's hold to frozen is rejected (it co-signs every holding, so
     freezing it would brick the registry)."""
     account, admin_party = Ints("account adminParty")
@@ -254,7 +248,7 @@ def prop_admin_never_freezable():
 
 
 def prop_freeze_change_non_idempotent():
-    """A18 (INV-42): a redundant freeze change is rejected — re-freezing an
+    """A17 (INV-42): a redundant freeze change is rejected — re-freezing an
     already-held account or unfreezing one that is not held does not authorize (the
     OZ Pausable non-idempotency), so the frozen set stays duplicate-free."""
     account, admin_party = Ints("account adminParty")

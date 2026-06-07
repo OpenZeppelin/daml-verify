@@ -43,8 +43,7 @@ from daml_verify.props.admin import (
     prop_renounce_self_only,
     prop_timelock_not_bypassable,
     prop_freeze_blocks_origination,
-    prop_freeze_gate_completeness,
-    prop_pause_dominates_freeze,
+    prop_freeze_gate_characterization,
     prop_admin_never_freezable,
     prop_freeze_change_non_idempotent,
 )
@@ -114,10 +113,9 @@ ALL_PROPERTIES = [
     ("A12: renounce self-only", prop_renounce_self_only),
     ("A13: timelock not bypassable", prop_timelock_not_bypassable),
     ("A14: freeze blocks origination", prop_freeze_blocks_origination),
-    ("A15: freeze gate completeness", prop_freeze_gate_completeness),
-    ("A16: pause dominates freeze", prop_pause_dominates_freeze),
-    ("A17: admin never freezable", prop_admin_never_freezable),
-    ("A18: freeze change non-idempotent", prop_freeze_change_non_idempotent),
+    ("A15: freeze gate characterization", prop_freeze_gate_characterization),
+    ("A16: admin never freezable", prop_admin_never_freezable),
+    ("A17: freeze change non-idempotent", prop_freeze_change_non_idempotent),
 ]
 
 

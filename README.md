@@ -9,7 +9,7 @@ Lightweight formal verification for DAML contracts using the [Z3 SMT solver](htt
 
 ## Properties
 
-daml-verify ships with 32 properties across five categories — conservation (C),
+daml-verify ships with 31 properties across five categories — conservation (C),
 division (D), temporal (T), vault (V), and admin layer (A):
 
 | ID | Property | What it proves |
@@ -42,10 +42,9 @@ division (D), temporal (T), vault (V), and admin layer (A):
 | A12 | Renounce self-only | `renounceRole` only ever affects a capability that names the caller |
 | A13 | Timelock not bypassable | The two-step default-admin handoff cannot complete before its timelock elapses |
 | A14 | Freeze blocks origination | A frozen sender or receiver cannot originate — the AL-10 compliance hold |
-| A15 | Freeze gate completeness | An unpaused origination with no frozen party proceeds (the gate is not over-restrictive) |
-| A16 | Pause dominates freeze | The unified `assertCanOriginate` gate still blocks while paused, for any freeze state |
-| A17 | Admin never freezable | The registry administrator can never be set frozen (it co-signs every holding) |
-| A18 | Freeze change non-idempotent | A redundant freeze change (re-freeze held / unfreeze unheld) does not authorize |
+| A15 | Freeze gate characterization | The unified `assertCanOriginate` gate is **exactly** `not paused ∧ no involved party frozen` (biconditional vs an independent spec — non-vacuous: fails if either conjunct is dropped or the gate degenerates; subsumes pause-preservation) |
+| A16 | Admin never freezable | The registry administrator can never be set frozen (it co-signs every holding) |
+| A17 | Freeze change non-idempotent | A redundant freeze change (re-freeze held / unfreeze unheld) does not authorize |
 
 The admin-layer (A) properties model `SimpleToken/Admin/Capability.daml`
 (`requireRole`, `scopeAuthorizes`, `consumeMintAllowance`), `Rules.daml`
@@ -56,8 +55,15 @@ role-admin hierarchy (`Admin/Authority.daml` `requireRoleAdmin` + `Admin/Roles.d
 timelocked default-admin handoff `requireTimelockElapsed`) from the OpenZeppelin
 canton-token-template — its AccessControl / Pausable / per-minter-cap /
 role-admin-hierarchy / account-freeze layer. A9–A11 leave `roleAdmin : Role -> Role`
-and A14–A18 leave `isFrozen : Party -> Bool` **uninterpreted**, so they hold for
+and A14–A17 leave `isFrozen : Party -> Bool` **uninterpreted**, so they hold for
 every role->admin graph and every frozen set, not just the token's flat default.
+
+Scope of the freeze proofs (A14–A17): they verify the **gate logic** —
+`assertCanOriginate` is exactly `pause ∧ freeze`, the admin is unfreezable, and the
+change is non-idempotent. They model an abstract single-party gate; they do **not**
+verify (a) that the gate is actually invoked at each of the token's origination
+chokepoints, (b) the V2 `accountParties` owner+provider expansion, or (c) the
+cold-path mint-accept re-check — those are covered by the token's daml-script tests.
 
 ## Quick start
 
@@ -75,7 +81,7 @@ python main.py
 Expected output:
 
 ```
-daml-verify: 32 properties, 32 proved, 0 disproved
+daml-verify: 31 properties, 31 proved, 0 disproved
 
   [PROVED] C1: conservation total
   ...
@@ -89,10 +95,9 @@ daml-verify: 32 properties, 32 proved, 0 disproved
   [PROVED] A12: renounce self-only
   [PROVED] A13: timelock not bypassable
   [PROVED] A14: freeze blocks origination
-  [PROVED] A15: freeze gate completeness
-  [PROVED] A16: pause dominates freeze
-  [PROVED] A17: admin never freezable
-  [PROVED] A18: freeze change non-idempotent
+  [PROVED] A15: freeze gate characterization
+  [PROVED] A16: admin never freezable
+  [PROVED] A17: freeze change non-idempotent
 ```
 
 Run a single category with `python main.py --class admin` (or `conservation`,

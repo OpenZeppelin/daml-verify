@@ -14,8 +14,7 @@ from daml_verify.props.admin import (
     prop_renounce_self_only,
     prop_timelock_not_bypassable,
     prop_freeze_blocks_origination,
-    prop_freeze_gate_completeness,
-    prop_pause_dominates_freeze,
+    prop_freeze_gate_characterization,
     prop_admin_never_freezable,
     prop_freeze_change_non_idempotent,
 )
@@ -105,25 +104,20 @@ def test_freeze_blocks_origination():
     assert result.status == ProofStatus.PROVED
 
 
-def test_freeze_gate_completeness():
-    """A15 (AL-10): an unpaused origination with no frozen party proceeds."""
-    result = run_proof("A15", *prop_freeze_gate_completeness())
-    assert result.status == ProofStatus.PROVED
-
-
-def test_pause_dominates_freeze():
-    """A16 (AL-10): the unified gate still blocks while paused, any freeze state."""
-    result = run_proof("A16", *prop_pause_dominates_freeze())
+def test_freeze_gate_characterization():
+    """A15 (AL-10): the unified gate is exactly pause ∧ freeze (non-vacuous
+    biconditional — catches a dropped pause/freeze conjunct or an always-false gate)."""
+    result = run_proof("A15", *prop_freeze_gate_characterization())
     assert result.status == ProofStatus.PROVED
 
 
 def test_admin_never_freezable():
-    """A17 (AL-10): the registry administrator can never be frozen."""
-    result = run_proof("A17", *prop_admin_never_freezable())
+    """A16 (AL-10): the registry administrator can never be frozen."""
+    result = run_proof("A16", *prop_admin_never_freezable())
     assert result.status == ProofStatus.PROVED
 
 
 def test_freeze_change_non_idempotent():
-    """A18 (AL-10): a redundant freeze change does not authorize."""
-    result = run_proof("A18", *prop_freeze_change_non_idempotent())
+    """A17 (AL-10): a redundant freeze change does not authorize."""
+    result = run_proof("A17", *prop_freeze_change_non_idempotent())
     assert result.status == ProofStatus.PROVED
