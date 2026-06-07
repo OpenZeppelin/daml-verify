@@ -20,6 +20,10 @@ from daml_verify.model.admin import (
     symbolic_require_role_admin,
     symbolic_renounce_authorizes,
     symbolic_timelock_elapsed,
+    frozen_relation,
+    symbolic_assert_accounts_not_frozen,
+    symbolic_can_originate,
+    symbolic_set_account_frozen_authorized,
 )
 
 
@@ -193,4 +197,70 @@ def prop_timelock_not_bypassable():
     now, effective_time = Reals("now effectiveTime")
     proceeds = symbolic_timelock_elapsed(now, effective_time)
     goal = Implies(now < effective_time, Not(proceeds))
+    return BoolVal(True), goal
+
+
+# --- AL-10: account-level freeze / compliance hold ---
+
+def prop_freeze_blocks_origination():
+    """A14 (INV-40): a frozen party cannot originate. If EITHER the sender or the
+    receiver of an origination is frozen, the unified `assertCanOriginate` gate
+    rejects it — a frozen account can neither send nor receive new value."""
+    is_frozen = frozen_relation()
+    sender, receiver = Ints("sender receiver")
+    paused, = Bools("paused")
+    proceeds = symbolic_can_originate(paused, [sender, receiver], is_frozen)
+    goal = Implies(Or(is_frozen(sender), is_frozen(receiver)), Not(proceeds))
+    return BoolVal(True), goal
+
+
+def prop_freeze_gate_completeness():
+    """A15 (INV-40): the gate is not over-restrictive — an origination whose
+    registry is not paused and whose involved parties are all unfrozen proceeds."""
+    is_frozen = frozen_relation()
+    sender, receiver = Ints("sender receiver")
+    paused, = Bools("paused")
+    proceeds = symbolic_can_originate(paused, [sender, receiver], is_frozen)
+    goal = Implies(
+        And(Not(paused), Not(is_frozen(sender)), Not(is_frozen(receiver))),
+        proceeds,
+    )
+    return BoolVal(True), goal
+
+
+def prop_pause_dominates_freeze():
+    """A16 (INV-25 ∧ INV-40): pause and freeze are unified — a paused registry blocks
+    origination regardless of freeze state, so folding both into one gate cannot let
+    a pause be silently dropped."""
+    is_frozen = frozen_relation()
+    sender, receiver = Ints("sender receiver")
+    paused, = Bools("paused")
+    proceeds = symbolic_can_originate(paused, [sender, receiver], is_frozen)
+    goal = Implies(paused, Not(proceeds))
+    return BoolVal(True), goal
+
+
+def prop_admin_never_freezable():
+    """A17 (INV-42): the registry administrator can never be frozen — any attempt to
+    set the admin party's hold to frozen is rejected (it co-signs every holding, so
+    freezing it would brick the registry)."""
+    account, admin_party = Ints("account adminParty")
+    frozen, currently_frozen = Bools("frozen currentlyFrozen")
+    authorized = symbolic_set_account_frozen_authorized(
+        account, admin_party, frozen, currently_frozen
+    )
+    goal = Implies(And(frozen, account == admin_party), Not(authorized))
+    return BoolVal(True), goal
+
+
+def prop_freeze_change_non_idempotent():
+    """A18 (INV-42): a redundant freeze change is rejected — re-freezing an
+    already-held account or unfreezing one that is not held does not authorize (the
+    OZ Pausable non-idempotency), so the frozen set stays duplicate-free."""
+    account, admin_party = Ints("account adminParty")
+    frozen, currently_frozen = Bools("frozen currentlyFrozen")
+    authorized = symbolic_set_account_frozen_authorized(
+        account, admin_party, frozen, currently_frozen
+    )
+    goal = Implies(currently_frozen == frozen, Not(authorized))
     return BoolVal(True), goal

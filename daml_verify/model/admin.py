@@ -25,7 +25,7 @@ logic so Z3 can prove the authorization/scope/allowance/pause invariants hold
 for every input.
 """
 
-from z3 import And, Or, Not, Function, IntSort
+from z3 import And, Or, Not, Function, IntSort, BoolSort, BoolVal
 
 
 def symbolic_scope_authorizes(cap_is_scoped, cap_instr, req_is_scoped, req_instr):
@@ -121,3 +121,49 @@ def symbolic_timelock_elapsed(now, effective_time):
     two-step default-admin handoff proceeds iff ledger time has reached
     `effectiveTime`."""
     return now >= effective_time
+
+
+# --- AL-10: account-level freeze / compliance hold (SimpleToken/Rules.daml) ---
+
+def frozen_relation():
+    """An UNINTERPRETED predicate `isFrozen : Party -> Bool`, modeling membership in
+    `SimpleTokenRules.frozenAccounts`. Leaving it uninterpreted means the freeze
+    proofs quantify over EVERY possible frozen set, so they hold for any registry
+    state — the membership test (`notElem frozenAccounts`) is what is verified, not a
+    particular list."""
+    return Function("isFrozen", IntSort(), BoolSort())
+
+
+def symbolic_assert_accounts_not_frozen(parties, is_frozen):
+    """Model of `assertAccountsNotFrozen` (Rules.daml): the guard passes iff NONE of
+    the involved parties is frozen (`all (notElem frozenAccounts)`). `parties` is a
+    list of symbolic party ids; for V2 accounts it is their `accountParties` (owner
+    AND provider), so a hold on either blocks."""
+    if not parties:
+        return BoolVal(True)
+    return And(*[Not(is_frozen(p)) for p in parties])
+
+
+def symbolic_can_originate(paused, parties, is_frozen):
+    """Model of `assertCanOriginate` (Rules.daml): the UNIFIED origination gate — an
+    origination proceeds iff the registry is not paused AND no involved party is
+    frozen. Both controls move together at every chokepoint."""
+    return And(
+        symbolic_assert_not_paused(paused),
+        symbolic_assert_accounts_not_frozen(parties, is_frozen),
+    )
+
+
+def symbolic_set_account_frozen_authorized(account, admin_party, frozen, currently_frozen):
+    """Model of the freeze-specific guards in `Rules_SetAccountFrozen` (Rules.daml),
+    BEYOND the registry-wide `ComplianceAdmin` capability gate (which is the generic
+    `requireRole` proven by A1–A5). Authorized iff:
+      - it is not an attempt to FREEZE the registry admin (`not (frozen && account ==
+        admin)` — the root co-signs every holding, so freezing it would brick the
+        registry); AND
+      - the hold state actually changes (`currently_frozen != frozen` — the OZ
+        Pausable non-idempotency, `eRedundantFreezeChange`)."""
+    return And(
+        Not(And(frozen, account == admin_party)),
+        currently_frozen != frozen,
+    )

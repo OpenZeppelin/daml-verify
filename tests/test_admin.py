@@ -13,6 +13,11 @@ from daml_verify.props.admin import (
     prop_no_privilege_escalation,
     prop_renounce_self_only,
     prop_timelock_not_bypassable,
+    prop_freeze_blocks_origination,
+    prop_freeze_gate_completeness,
+    prop_pause_dominates_freeze,
+    prop_admin_never_freezable,
+    prop_freeze_change_non_idempotent,
 )
 
 
@@ -91,4 +96,34 @@ def test_renounce_self_only():
 def test_timelock_not_bypassable():
     """A13: the default-admin handoff cannot complete before its timelock."""
     result = run_proof("A13", *prop_timelock_not_bypassable())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_freeze_blocks_origination():
+    """A14 (AL-10): a frozen sender or receiver cannot originate."""
+    result = run_proof("A14", *prop_freeze_blocks_origination())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_freeze_gate_completeness():
+    """A15 (AL-10): an unpaused origination with no frozen party proceeds."""
+    result = run_proof("A15", *prop_freeze_gate_completeness())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_pause_dominates_freeze():
+    """A16 (AL-10): the unified gate still blocks while paused, any freeze state."""
+    result = run_proof("A16", *prop_pause_dominates_freeze())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_admin_never_freezable():
+    """A17 (AL-10): the registry administrator can never be frozen."""
+    result = run_proof("A17", *prop_admin_never_freezable())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_freeze_change_non_idempotent():
+    """A18 (AL-10): a redundant freeze change does not authorize."""
+    result = run_proof("A18", *prop_freeze_change_non_idempotent())
     assert result.status == ProofStatus.PROVED
