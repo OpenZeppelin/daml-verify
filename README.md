@@ -9,7 +9,7 @@ Lightweight formal verification for DAML contracts using the [Z3 SMT solver](htt
 
 ## Properties
 
-daml-verify ships with 22 properties across five categories — conservation (C),
+daml-verify ships with 27 properties across five categories — conservation (C),
 division (D), temporal (T), vault (V), and admin layer (A):
 
 | ID | Property | What it proves |
@@ -36,11 +36,22 @@ division (D), temporal (T), vault (V), and admin layer (A):
 | A6 | Mint allowance decrement | A capped mint decrements exactly and stays non-negative |
 | A7 | Mint allowance conservation | Sequential capped mints never exceed the initial allowance |
 | A8 | Pause blocks origination | While paused, a gated origination choice cannot proceed |
+| A9 | Grant requires role admin | Granting role R requires presenting a capability for R's admin role (`roleAdmin R`) — for every role graph |
+| A10 | Role-admin grant completeness | The role-admin gate authorizes when all conditions hold (non-vacuity guard for A9/A11/A12) |
+| A11 | No privilege escalation | The delegated path can never grant/revoke the root `Admin`/`DEFAULT_ADMIN_ROLE` (no re-delegation of root) |
+| A12 | Renounce self-only | `renounceRole` only ever affects a capability that names the caller |
+| A13 | Timelock not bypassable | The two-step default-admin handoff cannot complete before its timelock elapses |
 
 The admin-layer (A) properties model `SimpleToken/Admin/Capability.daml`
-(`requireRole`, `scopeAuthorizes`, `consumeMintAllowance`) and `Rules.daml`
-(`assertNotPaused`) from the OpenZeppelin canton-token-template — its
-AccessControl / Pausable / per-minter-cap layer.
+(`requireRole`, `scopeAuthorizes`, `consumeMintAllowance`), `Rules.daml`
+(`assertNotPaused`), and the AL-8 role-admin hierarchy
+(`Admin/Authority.daml` `requireRoleAdmin` + `Admin/Roles.daml`
+`delegableViaRoleAdmin`, `RoleCapability_Renounce`, and the `oz-access-control`
+timelocked default-admin handoff `requireTimelockElapsed`) from the OpenZeppelin
+canton-token-template — its AccessControl / Pausable / per-minter-cap /
+role-admin-hierarchy layer. A9–A11 leave `roleAdmin : Role -> Role` an
+**uninterpreted** function, so they hold for every role->admin graph, not just
+the token's flat default.
 
 ## Quick start
 
@@ -58,19 +69,19 @@ python main.py
 Expected output:
 
 ```
-daml-verify: 22 properties, 22 proved, 0 disproved
+daml-verify: 27 properties, 27 proved, 0 disproved
 
   [PROVED] C1: conservation total
   ...
   [PROVED] V5: division safety (seize)
   [PROVED] A1: capability admin gate
-  [PROVED] A2: capability assignee gate
-  [PROVED] A3: capability role gate
-  [PROVED] A4: scope least privilege
-  [PROVED] A5: scope completeness
-  [PROVED] A6: mint allowance decrement
-  [PROVED] A7: mint allowance conservation
+  ...
   [PROVED] A8: pause blocks origination
+  [PROVED] A9: grant requires role admin
+  [PROVED] A10: role-admin grant completeness
+  [PROVED] A11: no privilege escalation
+  [PROVED] A12: renounce self-only
+  [PROVED] A13: timelock not bypassable
 ```
 
 Run a single category with `python main.py --class admin` (or `conservation`,

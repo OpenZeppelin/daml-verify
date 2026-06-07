@@ -37,6 +37,11 @@ from daml_verify.props.admin import (
     prop_mint_allowance_decrement,
     prop_mint_allowance_conservation,
     prop_pause_blocks_origination,
+    prop_grant_requires_role_admin,
+    prop_role_admin_grant_completeness,
+    prop_no_privilege_escalation,
+    prop_renounce_self_only,
+    prop_timelock_not_bypassable,
 )
 
 
@@ -98,6 +103,11 @@ ALL_PROPERTIES = [
     ("A6: mint allowance decrement", prop_mint_allowance_decrement),
     ("A7: mint allowance conservation", prop_mint_allowance_conservation),
     ("A8: pause blocks origination", prop_pause_blocks_origination),
+    ("A9: grant requires role admin", prop_grant_requires_role_admin),
+    ("A10: role-admin grant completeness", prop_role_admin_grant_completeness),
+    ("A11: no privilege escalation", prop_no_privilege_escalation),
+    ("A12: renounce self-only", prop_renounce_self_only),
+    ("A13: timelock not bypassable", prop_timelock_not_bypassable),
 ]
 
 

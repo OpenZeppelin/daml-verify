@@ -8,6 +8,11 @@ from daml_verify.props.admin import (
     prop_mint_allowance_decrement,
     prop_mint_allowance_conservation,
     prop_pause_blocks_origination,
+    prop_grant_requires_role_admin,
+    prop_role_admin_grant_completeness,
+    prop_no_privilege_escalation,
+    prop_renounce_self_only,
+    prop_timelock_not_bypassable,
 )
 
 
@@ -56,4 +61,34 @@ def test_mint_allowance_conservation():
 def test_pause_blocks_origination():
     """A8: while paused, a gated origination choice cannot proceed."""
     result = run_proof("A8", *prop_pause_blocks_origination())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_grant_requires_role_admin():
+    """A9: granting role R requires presenting a capability for roleAdmin(R)."""
+    result = run_proof("A9", *prop_grant_requires_role_admin())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_role_admin_grant_completeness():
+    """A10: the role-admin gate authorizes when all conditions hold (non-vacuity)."""
+    result = run_proof("A10", *prop_role_admin_grant_completeness())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_no_privilege_escalation():
+    """A11: the delegated path can never grant/revoke the root Admin role."""
+    result = run_proof("A11", *prop_no_privilege_escalation())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_renounce_self_only():
+    """A12: renounceRole only ever affects a capability that names the caller."""
+    result = run_proof("A12", *prop_renounce_self_only())
+    assert result.status == ProofStatus.PROVED
+
+
+def test_timelock_not_bypassable():
+    """A13: the default-admin handoff cannot complete before its timelock."""
+    result = run_proof("A13", *prop_timelock_not_bypassable())
     assert result.status == ProofStatus.PROVED

@@ -16,6 +16,10 @@ from daml_verify.model.admin import (
     symbolic_scope_authorizes,
     symbolic_consume_allowance,
     symbolic_assert_not_paused,
+    role_admin_relation,
+    symbolic_require_role_admin,
+    symbolic_renounce_authorizes,
+    symbolic_timelock_elapsed,
 )
 
 
@@ -109,4 +113,83 @@ def prop_pause_blocks_origination():
     paused, = Bools("paused")
     proceeds = symbolic_assert_not_paused(paused)
     goal = Implies(paused, Not(proceeds))
+    return BoolVal(True), goal
+
+
+# --- AL-8: role-admin hierarchy, renounce, timelocked default-admin handoff ---
+
+
+def _role_admin_vars():
+    """Free symbolic operation + capability tuple for the delegated role-admin gate.
+    `role_admin_of` is uninterpreted, so the proofs hold for every role graph."""
+    caller, target_role, expected_admin, root_role = Ints(
+        "caller targetRole expectedAdmin rootRole"
+    )
+    cap_admin, cap_assignee, cap_role = Ints("capAdmin capAssignee capRole")
+    cap_is_scoped, = Bools("capIsScoped")
+    role_admin_of = role_admin_relation()
+    authorized = symbolic_require_role_admin(
+        caller, target_role, expected_admin, root_role, role_admin_of,
+        cap_admin, cap_assignee, cap_role, cap_is_scoped,
+    )
+    return locals()
+
+
+def prop_grant_requires_role_admin():
+    """A9 (AL-8): granting role R through the delegated path requires the caller to
+    present a capability for R's admin role (`roleAdmin R`). A capability for any
+    other role can never authorize the grant — holds for every role graph."""
+    v = _role_admin_vars()
+    goal = Implies(
+        v["cap_role"] != v["role_admin_of"](v["target_role"]),
+        Not(v["authorized"]),
+    )
+    return BoolVal(True), goal
+
+
+def prop_role_admin_grant_completeness():
+    """A10 (AL-8): non-vacuity + positive direction. When `target_role` is not the
+    root role and the caller presents a registry-wide capability for
+    `roleAdmin target_role` issued to it by this admin, the delegated grant IS
+    authorized. Guards against a vacuously-true gate (A9/A11/A12 are implications
+    that would hold trivially if the gate never authorized anything)."""
+    v = _role_admin_vars()
+    preconditions = And(
+        v["target_role"] != v["root_role"],
+        v["cap_admin"] == v["expected_admin"],
+        v["cap_assignee"] == v["caller"],
+        v["cap_role"] == v["role_admin_of"](v["target_role"]),
+        Not(v["cap_is_scoped"]),
+    )
+    goal = v["authorized"]
+    return preconditions, goal
+
+
+def prop_no_privilege_escalation():
+    """A11 (AL-8, C9): no privilege escalation through the delegated path — it can
+    never grant or revoke the root role (`Admin`/`DEFAULT_ADMIN_ROLE`), whatever
+    capability the caller holds. Re-delegating root is impossible; `Admin` moves
+    only via the genesis root or the timelocked handoff."""
+    v = _role_admin_vars()
+    goal = Implies(v["target_role"] == v["root_role"], Not(v["authorized"]))
+    return BoolVal(True), goal
+
+
+def prop_renounce_self_only():
+    """A12 (AL-8): `renounceRole` is self-only — a party can only renounce a
+    capability that names it (the choice is controlled by the assignee), so a
+    caller can never renounce someone else's role."""
+    cap_assignee, caller = Ints("capAssignee caller")
+    authorized = symbolic_renounce_authorizes(cap_assignee, caller)
+    goal = Implies(cap_assignee != caller, Not(authorized))
+    return BoolVal(True), goal
+
+
+def prop_timelock_not_bypassable():
+    """A13 (AL-8): the two-step default-admin handoff cannot complete before its
+    timelock — acceptance is impossible while ledger time is before
+    `effectiveTime`, so the delay window cannot be bypassed."""
+    now, effective_time = Reals("now effectiveTime")
+    proceeds = symbolic_timelock_elapsed(now, effective_time)
+    goal = Implies(now < effective_time, Not(proceeds))
     return BoolVal(True), goal

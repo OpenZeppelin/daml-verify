@@ -4,6 +4,11 @@ Mirrors, in canton-token-template:
   - `requireRole` / `scopeAuthorizes`  (SimpleToken/Admin/Capability.daml)
   - `consumeMintAllowance`             (SimpleToken/Admin/Capability.daml)
   - `assertNotPaused`                  (SimpleToken/Rules.daml)
+  - `requireRoleAdmin` + `delegableViaRoleAdmin`  (the AL-8 role-admin hierarchy:
+    SimpleToken/Admin/Authority.daml + SimpleToken/Admin/Roles.daml)
+  - `RoleCapability_Renounce`          (SimpleToken/Admin/Capability.daml, AL-8)
+  - `requireTimelockElapsed`           (oz-access-control, the AL-8 timelocked
+    default-admin handoff)
 
 Modeling conventions:
   - Parties and roles are opaque Z3 Ints — distinct values are distinct
@@ -20,7 +25,7 @@ logic so Z3 can prove the authorization/scope/allowance/pause invariants hold
 for every input.
 """
 
-from z3 import And, Or, Not
+from z3 import And, Or, Not, Function, IntSort
 
 
 def symbolic_scope_authorizes(cap_is_scoped, cap_instr, req_is_scoped, req_instr):
@@ -65,3 +70,54 @@ def symbolic_assert_not_paused(paused):
     """Model of `assertNotPaused` (Rules.daml): a gated origination choice
     proceeds iff the registry is not paused."""
     return Not(paused)
+
+
+def role_admin_relation():
+    """An UNINTERPRETED function `roleAdmin : Role -> Role` (Int -> Int), modeling
+    `SimpleToken.Admin.Roles.roleAdmin`. Leaving it uninterpreted means the proofs
+    quantify over EVERY role->admin relation, so the role-admin mechanism is
+    verified independent of the token's specific (flat-default) graph."""
+    return Function("roleAdmin", IntSort(), IntSort())
+
+
+def symbolic_require_role_admin(
+    caller, target_role, expected_admin, root_role, role_admin_of,
+    cap_admin, cap_assignee, cap_role, cap_is_scoped,
+):
+    """Model of the AL-8 delegated role-admin path — `requireRoleAdmin` plus the
+    `delegableViaRoleAdmin` carve-out (Authority.daml / Roles.daml). A delegated
+    grant or revoke of `target_role` is authorized iff ALL hold:
+
+      - `target_role` is delegable at all — it is NOT the root role
+        (`delegableViaRoleAdmin`: the `Admin`/`DEFAULT_ADMIN_ROLE` carve-out,
+        decision C9 — root is never delegated through this path); AND
+      - the presented capability is admin-signed by this registry (`cap_admin`),
+        names the caller (`cap_assignee`), carries the admin role of `target_role`
+        (`roleAdmin target_role`), and is registry-wide (`scopeAuthorizes None`
+        admits only an unscoped cap for a registry-wide role-management op).
+
+    Combining the carve-out and the `requireRole` gate here mirrors the token's
+    single chokepoint, so any future delegated choice routed through it inherits
+    both guards.
+    """
+    return And(
+        target_role != root_role,                    # delegableViaRoleAdmin (Admin not delegable)
+        cap_admin == expected_admin,                 # requireRole: admin gate (A1)
+        cap_assignee == caller,                      # requireRole: assignee gate (A2)
+        cap_role == role_admin_of(target_role),      # requireRole: holds roleAdmin(target_role) (A3)
+        Not(cap_is_scoped),                          # scope: registry-wide op needs unscoped cap (A4)
+    )
+
+
+def symbolic_renounce_authorizes(cap_assignee, caller):
+    """Model of `RoleCapability_Renounce` / `RoleGrant_Renounce` (AL-8): the choice
+    is controlled by the capability's assignee, so it is authorized iff the caller
+    is the assignee — self-only by construction (the `renounceRole` analogue)."""
+    return cap_assignee == caller
+
+
+def symbolic_timelock_elapsed(now, effective_time):
+    """Model of `requireTimelockElapsed` (oz-access-control, AL-8): acceptance of a
+    two-step default-admin handoff proceeds iff ledger time has reached
+    `effectiveTime`."""
+    return now >= effective_time
