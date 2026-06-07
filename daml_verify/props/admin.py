@@ -151,8 +151,9 @@ def prop_role_admin_grant_completeness():
     """A10 (AL-8): non-vacuity + positive direction. When `target_role` is not the
     root role and the caller presents a registry-wide capability for
     `roleAdmin target_role` issued to it by this admin, the delegated grant IS
-    authorized. Guards against a vacuously-true gate (A9/A11/A12 are implications
-    that would hold trivially if the gate never authorized anything)."""
+    authorized. Guards against a vacuously-true gate (A9/A11 are implications over
+    this same gate that would hold trivially if it never authorized anything; A12
+    and A13 use their own trivially-satisfiable models and need no such guard)."""
     v = _role_admin_vars()
     preconditions = And(
         v["target_role"] != v["root_role"],

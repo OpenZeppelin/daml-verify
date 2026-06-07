@@ -24,7 +24,9 @@ def main():
         properties = [(n, f) for n, f in ALL_PROPERTIES if n.startswith("A")]
     elif len(args) == 1:
         query = args[0]
-        properties = [(n, f) for n, f in ALL_PROPERTIES if n.startswith(query)]
+        # Match the property ID exactly (the token before ":"), so `A1` selects
+        # A1 only and does not prefix-collide with A10–A13. Use `--class` for groups.
+        properties = [(n, f) for n, f in ALL_PROPERTIES if n.split(":")[0] == query]
         if not properties:
             print(f"Unknown property: {query}")
             print("Available properties:")

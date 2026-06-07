@@ -37,7 +37,7 @@ division (D), temporal (T), vault (V), and admin layer (A):
 | A7 | Mint allowance conservation | Sequential capped mints never exceed the initial allowance |
 | A8 | Pause blocks origination | While paused, a gated origination choice cannot proceed |
 | A9 | Grant requires role admin | Granting role R requires presenting a capability for R's admin role (`roleAdmin R`) — for every role graph |
-| A10 | Role-admin grant completeness | The role-admin gate authorizes when all conditions hold (non-vacuity guard for A9/A11/A12) |
+| A10 | Role-admin grant completeness | The role-admin gate authorizes when all conditions hold (non-vacuity guard for A9/A11) |
 | A11 | No privilege escalation | The delegated path can never grant/revoke the root `Admin`/`DEFAULT_ADMIN_ROLE` (no re-delegation of root) |
 | A12 | Renounce self-only | `renounceRole` only ever affects a capability that names the caller |
 | A13 | Timelock not bypassable | The two-step default-admin handoff cannot complete before its timelock elapses |
